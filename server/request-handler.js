@@ -15,24 +15,22 @@ var defaultCorsHeaders = {
 }; 
 
 var path = require('path');
-
-var messages = [];
-var rooms = [];
+var fs = require('fs');
+// var messages = [];
 
 var requestHandler = function(request, response) {
 
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
   // 404 if wrong url
-  if (request.url !== '/classes/messages') {
-    var statusCode = 404;
-    var headers = defaultCorsHeaders;
-    headers['Content-Type'] = 'text/plain';
-    response.writeHead(statusCode, headers);
+  if (request.url !== '/classes/messages' || 
+    !['GET', 'POST', 'OPTIONS'].includes(request.method)) {
+    defaultCorsHeaders['Content-Type'] = 'text/plain';
+    response.writeHead(404, defaultCorsHeaders);
     response.end('Not allowed!');
-  } else {
 
-    // deal with POST request
+  // deal with POST request
+  } else {
     if (request.method === 'POST') {
       let body = [];
       request.on('data', (chunk) => {
@@ -54,28 +52,22 @@ var requestHandler = function(request, response) {
 
     // deal with GET request
     } else if (request.method === 'GET') {
-      var statusCode = 200;
-      var headers = defaultCorsHeaders;  
-      headers['Content-Type'] = 'application/json';
-      response.writeHead(statusCode, headers);
-      response.end(JSON.stringify({results: messages}));
+      fs.readFile('./server/messageBank.js', (err, data) => {
+        if (err) throw err;
+        var parsedFile = data.toString().split(',\n');
+        parsedFile = parsedFile.map(message => JSON.parse(message));
+        defaultCorsHeaders['Content-Type'] = 'application/json';
+        response.writeHead(200, defaultCorsHeaders);
+        response.end(JSON.stringify({results: parsedFile}));
+      });
 
     // deal with OPTIONS request
     } else if (request.method === 'OPTIONS') {
-      var statusCode = 200;
-      var headers = defaultCorsHeaders;
-      headers['Content-Type'] = 'text/plain';
-      response.writeHead(statusCode, headers);
+      defaultCorsHeaders['Content-Type'] = 'text/plain';
+      response.writeHead(200, defaultCorsHeaders);
       response.end('Allowed methods: POST, GET.');
-
-    // 404 if other type of request
-    } else {
-      var statusCode = 404;
-      var headers = defaultCorsHeaders;
-      headers['Content-Type'] = 'text/plain';
-      response.writeHead(statusCode, headers);
-      response.end('Not allowed!');
     }
+    
   }
 };
 
