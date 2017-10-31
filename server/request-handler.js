@@ -39,7 +39,12 @@ var requestHandler = function(request, response) {
         body.push(chunk);
       }).on('end', () => {
         body = Buffer.concat(body).toString();
-        messages.push(JSON.parse(body));
+        var messageObject = JSON.parse(body);
+        if (messageObject['roomname'] === undefined) {
+          messageObject['roomname'] = 'lobby';
+        }
+        messageObject.createdAt = Date.now();
+        messages.push(messageObject);
         var statusCode = 201;
         var headers = defaultCorsHeaders;
         headers['Content-Type'] = 'application/json';
