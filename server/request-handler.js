@@ -38,6 +38,9 @@ var requestHandler = function(request, response) {
       }).on('end', () => {
         body = Buffer.concat(body).toString();
         // messages.push(JSON.parse(body));
+        var parsedBody = JSON.parse(body);
+        parsedBody.createdAt = Date.now();
+        body = JSON.stringify(parsedBody);
         fs.appendFile('./server/messageBank.js', ',\n' + body, (err) => {
           if (err) throw err;
           fs.readFile('./server/messageBank.js', (err, data) => {
