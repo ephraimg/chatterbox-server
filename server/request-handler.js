@@ -40,6 +40,7 @@ var requestHandler = function(request, response) {
         // messages.push(JSON.parse(body));
         var parsedBody = JSON.parse(body);
         parsedBody.createdAt = Date.now();
+        if (!parsedBody.roomname) { parsedBody.roomname = 'lobby'; }
         body = JSON.stringify(parsedBody);
         fs.appendFile('./server/messageBank.js', ',\n' + body, (err) => {
           if (err) throw err;

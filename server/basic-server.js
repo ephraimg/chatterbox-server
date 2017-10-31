@@ -1,8 +1,15 @@
 /* Import node's http module: */
 var http = require('http');
+var fs = require('fs');
 var requestHandler = require('./request-handler');
 
-  // requestHandler is: module.exports from request-handler
+// var lastMessageId;
+// fs.readFile('./server/messageBank.js', (err, data) => {
+//   if (err) throw err;
+//   var parsedFile = data.toString().split(',\n');
+//   parsedFile = JSON.parse(parsedFile[0]);
+//   lastMessageId = parsedFile.objectId;
+// })
 
 // Every server needs to listen on a port with a unique number. The
 // standard port for HTTP servers is port 80, but that port is
