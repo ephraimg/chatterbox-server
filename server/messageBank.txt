@@ -9,4 +9,6 @@
 {"username":"Ephraim","text":"Why is the free beer locked up?","roomname":"WeWork","createdAt":1509500506601},
 {"username":"Doug","text":"sdfsdf","roomname":"Berkeley","createdAt":1509502782353},
 {"username":"Doug","text":"xcxcvcx","roomname":"Berkeley","createdAt":1509502784307},
-{"username":"Doug","text":"sdfsdfergher","roomname":"Berkeley","createdAt":1509502999102}
+{"username":"Doug","text":"sdfsdfergher","roomname":"Berkeley","createdAt":1509502999102},
+{"username":"Doug","text":"sdfsedgw","roomname":"lobby","createdAt":1509506722005},
+{"username":"Doug","text":"cbvvccvvcvc","roomname":"lobby","createdAt":1509506724733}

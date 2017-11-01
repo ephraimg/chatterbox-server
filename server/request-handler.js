@@ -36,36 +36,42 @@ fs.readFile('./server/messageBank.txt', (err, data) => {
  
 
 var requestHandler = function(request, response) {
-
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
-  // deal with GET request
+  // Handle GET requests
   if (request.method === 'GET') {
     
+    // Respond to API messages endpoint with results
     if (request.url === '/classes/messages') {
       headers['Content-Type'] = 'application/json';
-      response.writeHead(200, defaultCorsHeaders);
+      response.writeHead(200, headers);
       response.end(JSON.stringify({results: messages}));
-    
-    // Serve static files for client
     } else {
-      var fileurl;
-      if (request.url === '/' || request.url.includes('/?username=')) {
-        fileurl = '/client/index.html';
-      } else {
-        var fileExt = path.extname(request.url);
-        if (['.js', '.css', '.gif'].includes(fileExt) && !request.url.includes('bower')) {
-          fileurl = '/client' + request.url;
-        } else if (fileExt === '.js' && request.url.includes('bower')) {  
-          fileurl = request.url;
-        }
+    
+      // Respond to other requests with static files
+      var fileExt = path.extname(request.url);
+      if (['.js', '.css', '.gif'].includes(fileExt)) {
+        var fileurl = request.url.includes('bower') ? request.url : '/client' + request.url;
+        headers['Content-Type'] = mimeMap[fileExt];
+        
+      // Respond to base url requests with index page  
+      } else if (request.url === '/' || request.url.includes('/?username=')) {
+        var fileurl = '/client/index.html';
+        headers['Content-Type'] = 'text/html';
       }
-      response.writeHead(200, { 'Content-Type': mimeMap[fileExt] });
-      fs.createReadStream(__dirname + '/../client' + fileurl).pipe(response);
-    }
+      
+      // Pipe the file into the response, 404 if no file
+      response.writeHead(200, headers);
+      var read = fs.createReadStream(__dirname + '/../client' + fileurl);
+      read.on('error', function() { 
+        response.writeHead(404, defaultCorsHeaders);
+        response.end('File not found');
+      });
+      read.pipe(response);        
+    } 
   }
 
-  // deal with POST request
+  // Handle POST requests
   if (request.method === 'POST' && request.url === '/classes/messages') {
     let body = [];
     request.on('data', (chunk) => {
@@ -88,13 +94,13 @@ var requestHandler = function(request, response) {
     });
   }
   
-  // deal with OPTIONS request
+  // Handle OPTIONS requests
   if (request.method === 'OPTIONS') {
     response.writeHead(200, defaultCorsHeaders);
     response.end('Allowed methods: POST, GET.');
   }
   
-  // 404 if method not accepted
+  // 404 otherwise
   if (!['GET', 'POST', 'OPTIONS'].includes(request.method)) {
     response.writeHead(404, defaultCorsHeaders);
     response.end('Not allowed!');
