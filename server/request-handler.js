@@ -16,14 +16,56 @@ var defaultCorsHeaders = {
 
 var path = require('path');
 var fs = require('fs');
-// var messages = [];
+var mimeMap = {
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.html': 'text/html',
+  '.gif': 'image/gif'
+};
+var messages = [];
+
+// Serve static chatterbox files
+// if (request.method === 'GET' && request.url === '/') {
+//   fs.readFile(__dirname + '/../client/client/index.html', (err, data) => {
+//     if (err) { console.error(); }
+//     // if data has been retrieved, send it to client
+//     console.log('data: ', data);
+//     var statusCode = 200;
+//     var headers = defaultCorsHeaders;
+//     headers['Content-Type'] = 'text/html';
+//     response.writeHead(statusCode, headers);
+//     response.write(data);
+//     response.end();
+//   });  
+// }
+  
+  
+  
+  
 
 var requestHandler = function(request, response) {
 
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
+  // Serve static files for client
+  if (request.method === 'GET' && request.url !== '/classes/messages') {
+    var fileurl;
+    if (request.url === '/' || request.url.includes('/?username=')) {
+      fileurl = __dirname + '/../client/client/index.html';
+    } else {
+      var fileExt = path.extname(request.url);
+      if (['.js', '.css', '.gif'].includes(fileExt) && !request.url.includes('bower')) {
+        fileurl = __dirname + '/../client/client' + request.url;
+      } else if (fileExt === '.js' && request.url.includes('bower')) {  
+        fileurl = __dirname + '/../client' + request.url;
+      }
+      var mimeType = mimeMap[fileExt];
+    }
+    response.writeHead(200, { 'Content-Type': mimeType });
+    fs.createReadStream(fileurl).pipe(response);
+
   // 404 if wrong url
-  if (request.url !== '/classes/messages' || 
+  } else if (request.url !== '/classes/messages' || 
     !['GET', 'POST', 'OPTIONS'].includes(request.method)) {
     defaultCorsHeaders['Content-Type'] = 'text/plain';
     response.writeHead(404, defaultCorsHeaders);
@@ -31,7 +73,7 @@ var requestHandler = function(request, response) {
 
   // deal with POST request
   } else {
-    if (request.method === 'POST') {
+    if (request.method === 'POST' && request.url === '/classes/messages') {
       let body = [];
       request.on('data', (chunk) => {
         body.push(chunk);
@@ -43,6 +85,7 @@ var requestHandler = function(request, response) {
         }
         messageObject.createdAt = Date.now();
         messages.push(messageObject);
+        // addToMessageBank(JSON.stringify(messageObject));
         var statusCode = 201;
         var headers = defaultCorsHeaders;
         headers['Content-Type'] = 'application/json';
@@ -51,19 +94,22 @@ var requestHandler = function(request, response) {
       });
 
     // deal with GET request
-    } else if (request.method === 'GET') {
-      fs.readFile('./server/messageBank.js', (err, data) => {
-        if (err) throw err;
-        var parsedFile = data.toString().split(',\n');
-        parsedFile = parsedFile.map(message => JSON.parse(message));
-        defaultCorsHeaders['Content-Type'] = 'application/json';
-        response.writeHead(200, defaultCorsHeaders);
-        response.end(JSON.stringify({results: parsedFile}));
-      });
+    } else if (request.method === 'GET' && request.url === '/classes/messages') {
+      // fs.readFile('./server/messageBank.js', (err, data) => {
+      //   if (err) throw err;
+      //   var parsedFile = data.toString().split(',\n');
+      //   parsedFile = parsedFile.map(message => JSON.parse(message));
+      var headers = defaultCorsHeaders;
+      headers['Content-Type'] = 'application/json';
+      response.writeHead(200, defaultCorsHeaders);
+      // response.end(JSON.stringify({results: parsedFile}));
+      response.end(JSON.stringify({results: messages}));
+      // });
 
     // deal with OPTIONS request
     } else if (request.method === 'OPTIONS') {
-      defaultCorsHeaders['Content-Type'] = 'text/plain';
+      var headers = defaultCorsHeaders;
+      headers['Content-Type'] = 'text/plain';
       response.writeHead(200, defaultCorsHeaders);
       response.end('Allowed methods: POST, GET.');
     }
