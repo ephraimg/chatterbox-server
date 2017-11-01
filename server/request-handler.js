@@ -13,6 +13,7 @@ var defaultCorsHeaders = {
   'access-control-allow-headers': 'content-type, accept',
   'access-control-max-age': 10 // Seconds.
 }; 
+var headers = defaultCorsHeaders;
 
 var path = require('path');
 var fs = require('fs');
@@ -22,99 +23,83 @@ var mimeMap = {
   '.html': 'text/html',
   '.gif': 'image/gif'
 };
+
 var messages = [];
 
-// Serve static chatterbox files
-// if (request.method === 'GET' && request.url === '/') {
-//   fs.readFile(__dirname + '/../client/client/index.html', (err, data) => {
-//     if (err) { console.error(); }
-//     // if data has been retrieved, send it to client
-//     console.log('data: ', data);
-//     var statusCode = 200;
-//     var headers = defaultCorsHeaders;
-//     headers['Content-Type'] = 'text/html';
-//     response.writeHead(statusCode, headers);
-//     response.write(data);
-//     response.end();
-//   });  
-// }
-  
-  
-  
-  
+// On initialization, get all stored messages, set those as our messages array
+fs.readFile('./server/messageBank.txt', (err, data) => {
+  if (err) { throw err; }
+  var parsedFile = data.toString().split(',\n');
+  messages = parsedFile.map(message => JSON.parse(message));
+});
+
+ 
 
 var requestHandler = function(request, response) {
 
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
-  // Serve static files for client
-  if (request.method === 'GET' && request.url !== '/classes/messages') {
-    var fileurl;
-    if (request.url === '/' || request.url.includes('/?username=')) {
-      fileurl = __dirname + '/../client/client/index.html';
-    } else {
-      var fileExt = path.extname(request.url);
-      if (['.js', '.css', '.gif'].includes(fileExt) && !request.url.includes('bower')) {
-        fileurl = __dirname + '/../client/client' + request.url;
-      } else if (fileExt === '.js' && request.url.includes('bower')) {  
-        fileurl = __dirname + '/../client' + request.url;
-      }
-      var mimeType = mimeMap[fileExt];
-    }
-    response.writeHead(200, { 'Content-Type': mimeType });
-    fs.createReadStream(fileurl).pipe(response);
-
-  // 404 if wrong url
-  } else if (request.url !== '/classes/messages' || 
-    !['GET', 'POST', 'OPTIONS'].includes(request.method)) {
-    defaultCorsHeaders['Content-Type'] = 'text/plain';
-    response.writeHead(404, defaultCorsHeaders);
-    response.end('Not allowed!');
-
-  // deal with POST request
-  } else {
-    if (request.method === 'POST' && request.url === '/classes/messages') {
-      let body = [];
-      request.on('data', (chunk) => {
-        body.push(chunk);
-      }).on('end', () => {
-        body = Buffer.concat(body).toString();
-        var messageObject = JSON.parse(body);
-        if (messageObject['roomname'] === undefined) {
-          messageObject['roomname'] = 'lobby';
-        }
-        messageObject.createdAt = Date.now();
-        messages.push(messageObject);
-        // addToMessageBank(JSON.stringify(messageObject));
-        var statusCode = 201;
-        var headers = defaultCorsHeaders;
-        headers['Content-Type'] = 'application/json';
-        response.writeHead(statusCode, headers);
-        response.end(JSON.stringify({results: messages}));
-      });
-
-    // deal with GET request
-    } else if (request.method === 'GET' && request.url === '/classes/messages') {
-      // fs.readFile('./server/messageBank.js', (err, data) => {
-      //   if (err) throw err;
-      //   var parsedFile = data.toString().split(',\n');
-      //   parsedFile = parsedFile.map(message => JSON.parse(message));
-      var headers = defaultCorsHeaders;
+  // deal with GET request
+  if (request.method === 'GET') {
+    
+    if (request.url === '/classes/messages') {
       headers['Content-Type'] = 'application/json';
       response.writeHead(200, defaultCorsHeaders);
-      // response.end(JSON.stringify({results: parsedFile}));
       response.end(JSON.stringify({results: messages}));
-      // });
-
-    // deal with OPTIONS request
-    } else if (request.method === 'OPTIONS') {
-      var headers = defaultCorsHeaders;
-      headers['Content-Type'] = 'text/plain';
-      response.writeHead(200, defaultCorsHeaders);
-      response.end('Allowed methods: POST, GET.');
-    }
     
+    // Serve static files for client
+    } else {
+      var fileurl;
+      if (request.url === '/' || request.url.includes('/?username=')) {
+        fileurl = '/client/index.html';
+      } else {
+        var fileExt = path.extname(request.url);
+        if (['.js', '.css', '.gif'].includes(fileExt) && !request.url.includes('bower')) {
+          fileurl = '/client' + request.url;
+        } else if (fileExt === '.js' && request.url.includes('bower')) {  
+          fileurl = request.url;
+        }
+      }
+      response.writeHead(200, { 'Content-Type': mimeMap[fileExt] });
+      fs.createReadStream(__dirname + '/../client' + fileurl).pipe(response);
+    }
   }
+
+  // deal with POST request
+  if (request.method === 'POST' && request.url === '/classes/messages') {
+    let body = [];
+    request.on('data', (chunk) => {
+      body.push(chunk);
+    }).on('end', () => {
+      body = Buffer.concat(body).toString();
+      var messageObject = JSON.parse(body);
+      if (messageObject['roomname'] === undefined) {
+        messageObject['roomname'] = 'lobby';
+      }
+      messageObject.createdAt = Date.now();
+      messages.push(messageObject);
+      var stringMessage = JSON.stringify(messageObject);
+      fs.appendFile('./server/messageBank.txt', ',\n' + stringMessage, (err) => {
+        if (err) { console.error(err); }
+      });
+      headers['Content-Type'] = 'application/json';
+      response.writeHead(201, headers);
+      response.end(JSON.stringify({results: messages}));
+    });
+  }
+  
+  // deal with OPTIONS request
+  if (request.method === 'OPTIONS') {
+    response.writeHead(200, defaultCorsHeaders);
+    response.end('Allowed methods: POST, GET.');
+  }
+  
+  // 404 if method not accepted
+  if (!['GET', 'POST', 'OPTIONS'].includes(request.method)) {
+    response.writeHead(404, defaultCorsHeaders);
+    response.end('Not allowed!');
+  }
+
 };
 
 exports.requestHandler = requestHandler;

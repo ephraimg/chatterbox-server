@@ -3,23 +3,6 @@ var http = require('http');
 var requestHandler = require('./request-handler');
 var fs = require('fs');
 
-// var messages = [];
-
-// // get all stored messages, set those as our messages array
-// fs.readFile('./server/messageBank.js', (err, data) => {
-//   var results;
-//   if (err) { throw err; }
-//   var parsedFile = data.toString().split(',\n');
-//   messages = parsedFile.map(message => JSON.parse(message));
-// });
-
-// // when new message posted, we'll use this to store it permanently
-// var addToMessageBank = function(stringMessage) {
-//   fs.appendFile('./server/messageBank.js', ',\n' + stringMessage, (err) => {
-//     if (err) { console.error(err); }
-//   });
-// };
-
 // Every server needs to listen on a port with a unique number. The
 // standard port for HTTP servers is port 80, but that port is
 // normally already claimed by another server and/or not accessible

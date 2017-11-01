@@ -165,11 +165,12 @@ var app = {
     var $message = $('<br><span/>');
     $message.text(message.text).appendTo($chat);
     
-    var $date = $('<br><span />');
-    $date.text(message.createdAt).appendTo($chat);
+    var $date = $('<span class="date" />');
+    var mom = moment(message.createdAt);
+    $date.text(mom).appendTo($chat);
 
     // Add the message to the UI
-    app.$chats.append($chat);
+    app.$chats.prepend($chat);
 
   },
 
