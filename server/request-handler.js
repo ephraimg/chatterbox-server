@@ -38,6 +38,30 @@ fs.readFile('./server/messageBank.txt', (err, data) => {
 var requestHandler = function(request, response) {
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
+  if (request.method === 'POST') {
+    let body = [];
+    request.on('data', (chunk) => {
+      body.push(chunk);
+    }).on('end', () => {
+      body = Buffer.concat(body).toString();
+      // messages.push(JSON.parse(body));
+      var parsedBody = JSON.parse(body);
+      parsedBody.createdAt = Date.now();
+      if (!parsedBody.roomname) { parsedBody.roomname = 'lobby'; }
+      body = JSON.stringify(parsedBody);
+      fs.appendFile('./server/messageBank.js', ',\n' + body, (err) => {
+        if (err) throw err;
+        fs.readFile('./server/messageBank.js', (err, data) => {
+          if (err) throw err;
+          var parsedFile = data.toString().split(',\n');
+          parsedFile = parsedFile.map(message => JSON.parse(message));
+          defaultCorsHeaders['Content-Type'] = 'application/json';
+          response.writeHead(201, defaultCorsHeaders);
+          response.end(JSON.stringify({results: parsedFile}));
+        })
+      });
+    });
+
   // Handle GET requests
   if (request.method === 'GET') {
     
