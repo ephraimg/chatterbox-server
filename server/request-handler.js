@@ -13,66 +13,99 @@ var defaultCorsHeaders = {
   'access-control-allow-headers': 'content-type, accept',
   'access-control-max-age': 10 // Seconds.
 }; 
+var headers = defaultCorsHeaders;
 
 var path = require('path');
 var fs = require('fs');
-// var messages = [];
+var mimeMap = {
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.html': 'text/html',
+  '.gif': 'image/gif'
+};
+
+var messages = [];
+
+// On initialization, get all stored messages, set those as our messages array
+fs.readFile('./server/messageBank.txt', (err, data) => {
+  if (err) { throw err; }
+  var parsedFile = data.toString().split(',\n');
+  messages = parsedFile.map(message => JSON.parse(message));
+});
+
+ 
 
 var requestHandler = function(request, response) {
-
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
-  // 404 if wrong url
-  if (request.url !== '/classes/messages' || 
-    !['GET', 'POST', 'OPTIONS'].includes(request.method)) {
-    defaultCorsHeaders['Content-Type'] = 'text/plain';
+  // Handle GET requests
+  if (request.method === 'GET') {
+    
+    // Respond to API messages endpoint with results
+    if (request.url === '/classes/messages') {
+      headers['Content-Type'] = 'application/json';
+      response.writeHead(200, headers);
+      response.end(JSON.stringify({results: messages}));
+    } else {
+    
+      // Respond to other requests with static files
+      var fileExt = path.extname(request.url);
+      if (['.js', '.css', '.gif'].includes(fileExt)) {
+        var fileurl = request.url.includes('bower') ? request.url : '/client' + request.url;
+        headers['Content-Type'] = mimeMap[fileExt];
+        
+      // Respond to base url requests with index page  
+      } else if (request.url === '/' || request.url.includes('/?username=')) {
+        var fileurl = '/client/index.html';
+        headers['Content-Type'] = 'text/html';
+      }
+      
+      // Pipe the file into the response, 404 if no file
+      response.writeHead(200, headers);
+      var read = fs.createReadStream(__dirname + '/../client' + fileurl);
+      read.on('error', function() { 
+        response.writeHead(404, defaultCorsHeaders);
+        response.end('File not found');
+      });
+      read.pipe(response);        
+    } 
+  }
+
+  // Handle POST requests
+  if (request.method === 'POST' && request.url === '/classes/messages') {
+    let body = [];
+    request.on('data', (chunk) => {
+      body.push(chunk);
+    }).on('end', () => {
+      body = Buffer.concat(body).toString();
+      var messageObject = JSON.parse(body);
+      if (messageObject['roomname'] === undefined) {
+        messageObject['roomname'] = 'lobby';
+      }
+      messageObject.createdAt = Date.now();
+      messages.push(messageObject);
+      var stringMessage = JSON.stringify(messageObject);
+      fs.appendFile('./server/messageBank.txt', ',\n' + stringMessage, (err) => {
+        if (err) { console.error(err); }
+      });
+      headers['Content-Type'] = 'application/json';
+      response.writeHead(201, headers);
+      response.end(JSON.stringify({results: messages}));
+    });
+  }
+  
+  // Handle OPTIONS requests
+  if (request.method === 'OPTIONS') {
+    response.writeHead(200, defaultCorsHeaders);
+    response.end('Allowed methods: POST, GET.');
+  }
+  
+  // 404 otherwise
+  if (!['GET', 'POST', 'OPTIONS'].includes(request.method)) {
     response.writeHead(404, defaultCorsHeaders);
     response.end('Not allowed!');
-
-  // deal with POST request
-  } else {
-    if (request.method === 'POST') {
-      let body = [];
-      request.on('data', (chunk) => {
-        body.push(chunk);
-      }).on('end', () => {
-        body = Buffer.concat(body).toString();
-        // messages.push(JSON.parse(body));
-        var parsedBody = JSON.parse(body);
-        parsedBody.createdAt = Date.now();
-        body = JSON.stringify(parsedBody);
-        fs.appendFile('./server/messageBank.js', ',\n' + body, (err) => {
-          if (err) throw err;
-          fs.readFile('./server/messageBank.js', (err, data) => {
-            if (err) throw err;
-            var parsedFile = data.toString().split(',\n');
-            parsedFile = parsedFile.map(message => JSON.parse(message));
-            defaultCorsHeaders['Content-Type'] = 'application/json';
-            response.writeHead(201, defaultCorsHeaders);
-            response.end(JSON.stringify({results: parsedFile}));
-          })
-        });
-      });
-
-    // deal with GET request
-    } else if (request.method === 'GET') {
-      fs.readFile('./server/messageBank.js', (err, data) => {
-        if (err) throw err;
-        var parsedFile = data.toString().split(',\n');
-        parsedFile = parsedFile.map(message => JSON.parse(message));
-        defaultCorsHeaders['Content-Type'] = 'application/json';
-        response.writeHead(200, defaultCorsHeaders);
-        response.end(JSON.stringify({results: parsedFile}));
-      });
-
-    // deal with OPTIONS request
-    } else if (request.method === 'OPTIONS') {
-      defaultCorsHeaders['Content-Type'] = 'text/plain';
-      response.writeHead(200, defaultCorsHeaders);
-      response.end('Allowed methods: POST, GET.');
-    }
-    
   }
+
 };
 
 exports.requestHandler = requestHandler;

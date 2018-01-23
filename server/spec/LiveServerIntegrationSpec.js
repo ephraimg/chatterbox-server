@@ -66,12 +66,62 @@ describe('server', function() {
     });
   });
 
+  
+  it('should check that message roomname property value is assigned "lobby" if undefined', function(done) {
+    var requestParams = {
+      method: 'POST',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        username: 'fredx',
+        message: 'my favorite color is white!'
+      }
+    };
+    
+    request(requestParams, function(error, response, body) {
+      // Now if we request the log, that message should have roomname 'lobby':
+      request('http://127.0.0.1:3000/classes/messages', function(error, response, body) {
+        var messages = JSON.parse(body).results;
+        expect(messages[0].roomname).to.equal('lobby');
+        done();
+      });
+    });
+  });
+
+
+
+
+
+
+
   it('Should 404 when asked for a nonexistent endpoint', function(done) {
     request('http://127.0.0.1:3000/arglebargle', function(error, response, body) {
       expect(response.statusCode).to.equal(404);
       done();
     });
   });
+
+  it('should add time stamp to messages ', function(done) {
+    var requestParams = {
+      method: 'POST',
+      uri: 'http://127.0.0.1:3000/classes/messages',
+      json: {
+        username: 'Emmanuel',
+        message: 'my favorite color is blue!'
+      }
+    };
+    
+    request(requestParams, function(error, response, body) {
+      // Now if we request the log, that message should have roomname 'lobby':
+      request('http://127.0.0.1:3000/classes/messages', function(error, response, body) {
+        var messages = JSON.parse(body).results;
+        expect(messages[0].createdAt).to.exist;
+        done();
+      });
+    });
+  });
+
+
+
 
 
 });

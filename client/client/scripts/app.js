@@ -161,12 +161,16 @@ var app = {
     if (app.friends[message.username] === true) {
       $username.addClass('friend');
     }
-
+ 
     var $message = $('<br><span/>');
     $message.text(message.text).appendTo($chat);
+    
+    var $date = $('<span class="date" />');
+    var mom = moment(message.createdAt);
+    $date.text(mom).appendTo($chat);
 
     // Add the message to the UI
-    app.$chats.append($chat);
+    app.$chats.prepend($chat);
 
   },
 
